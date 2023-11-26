@@ -14,10 +14,12 @@ def main():
     for keyword in keywords:
         search_url = generate_search_url(base_url, keyword)
         apps = fetch_all_pages(search_url)
-        for name, url in apps:
-            print(f"App Name: {name}, URL: {url}")
+        for app in apps:
+            if app[1] not in scraped_apps:
+                save_to_csv(app)
+                scraped_apps.add(app[1])
 
-        time.sleep(random.uniform(5, 10))
+        time.sleep(random.uniform(5, 15))
 
 if __name__ == "__main__":
     main()
