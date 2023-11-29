@@ -16,8 +16,15 @@ def generate_search_url(keyword):
 
 async def scrape_page(page, url):
     try: 
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36')
         await page.goto(url, { 'waitUntil': 'networkidle0'})
-        await page.waitForSelector("#search_app_grid-content", {"timeout": 60000})
+        await page.waitForSelector("#search_app_grid-content", {"timeout": 120000})
+    except Exception as e:
+        logging.warning("Retrying due to timeout...")
+        await page.reload()
+        await page.waitForSelector("#search_app_grid-content", {"timeout": 120000})
+
+        await page.evaluate('_ => window.scrollBy(0, window.innerHeight)')
         apps = await page.evaluate('''() => {
             const apps = [];
             const appElements = document.querySelectorAll('#search_app_grid-content div[data-app-card-wrap]');
@@ -33,8 +40,8 @@ async def scrape_page(page, url):
         return apps
     except Exception as e:
         logging.error(f"An error occurred while scraping {url}: {e}")
-#        content = await page.content()
-#        logging.error(f"Page Content: {content}")
+        content = await page.content()
+        logging.error("Page Content: " + content[:500])
         return []
 
 def save_to_csv(app_data, filename="scraped_data.csv"):
@@ -60,9 +67,10 @@ async def run_search():
             delay = random.uniform(1, 10)
             await asyncio.sleep(delay)
 
-        await browser.close()
     except Exception as e:
         logging.error(f"An error occurred in run_search: {e}")
+    finally:
+        await browser.close()
 
 if __name__ == "__main__":
     logging.info("Starting scraping process.")
