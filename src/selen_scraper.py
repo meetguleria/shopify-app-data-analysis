@@ -27,20 +27,20 @@ def scrape_page(driver, url, scraped_urls):
         while True:
             # Scrolling will be done in phases:
             # Phase 1: Scroll down to 30-40% of the page
-            scroll_1 = random.uniform(0.3, 0.4) * driver.execute_script
-            ("return  document.body.scrollHeight")  
-            #Scroll the page
+            scroll_1 = random.uniform(0.3, 0.4) * driver.execute_script("return document.body.scrollHeight")
             driver.execute_script(f"window.scrollTo(0, {scroll_1});")
             time.sleep(random.uniform(1, 3))
+
             # Phase 2: Quick random scroll up 3-7% of the initial scroll
-            scroll_up = scroll_1 * random.uniform(0.8, 0.9) * driver.execute_script
+            scroll_up = scroll_1 * random.uniform(0.8, 0.9)
             driver.execute_script(f"window.scrollBy(0, -{scroll_up});")
             time.sleep(random.uniform(0.5, 1))
+
             #Phase 3: Scroll down to 80-90% of the page
-            scroll_2 = random.uniform(0.8, 0.9) * driver.execute_script
-            ("return document.body.scrollHeight")
+            scroll_2 = random.uniform(0.8, 0.9) * driver.execute_script("return document.body.scrollHeight")
             driver.execute_script(f"window.scrollTo(0, {scroll_2});")
             time.sleep(random.uniform(1, 3))
+
             # Extract app information
             app_elements = driver.find_elements(By.CSS_SELECTOR, '#search_app_grid-content div[data-app-card-wrap]')
             for app in app_elements:
@@ -53,12 +53,17 @@ def scrape_page(driver, url, scraped_urls):
                     apps.append([name, app_url])
                     scraped_urls.add(app_url)
             try: 
-                next_button = driver.find_element(By.CSS_SELECTOR, "a[rel='next']")
-                if not next_button.is_enabled() or 'disabled-class' in next_button.get_attribute('class'):
-                    break #last page reached
+                next_button_selector = "#pagination_controls > div > section > section.tw-block.lg\\:tw-hidden > div > a:nth-child(1)"
+                next_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, next_button_selector))
+                )
                 next_button.click()
-                WebDriverWait(driver, 120).until(EC.)
+                WebDriverWait(driver, 120).until(EC.presence_of_element_located((By.ID, "search_app_grid-context")))
+                time.sleep(random.uniform(1, 10))
             except NoSuchElementException:
+                break 
+            except Exception as e:
+                logging.error(f"Error interacting with pagination: {e}")
                 break
         return apps
 
@@ -83,11 +88,12 @@ def run_search():
 
     #initialize the chrome driver
     driver = webdriver.Chrome(options=options)
+    scraped_urls = set()
 
     try:
         for keyword in ["product recommendations", "product suggestions", "sales forecasting", "market analysis"]:
             search_url = generate_search_url(keyword)
-            apps = scrape_page(driver, search_url)
+            apps = scrape_page(driver, search_url, scraped_urls)
             save_to_csv(apps)
 
             time.sleep(random.uniform(1, 10))
